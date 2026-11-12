@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoValue Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Plan: kenteken-yellow accent on cool ink neutrals; two-pane tool — chat (input/output) left, pipeline stages right. */
+:root {
+  --bg: #f3f4f6;
+  --surface: #ffffff;
+  --sunken: #eceef2;
+  --ink: #15191f;
+  --muted: #5d6573;
+  --line: #d9dde4;
+  --accent: #f2c200;       /* Dutch number-plate yellow */
+  --accent-ink: #15191f;
+  --action: #1d4e89;
+  --action-ink: #ffffff;
+  --good: #1f7a4d;
+  --good-bg: #e3f3ea;
+  --bad: #b3261e;
+  --bad-bg: #fbe9e7;
+  --warn: #8a5a00;
+  --warn-bg: #fdf3d6;
+  --tg-bg: #dfe7ee;
+  --tg-in: #ffffff;
+  --tg-out: #e2f7cf;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --radius: 10px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1216; --surface: #171b21; --sunken: #1e232b; --ink: #e8eaee; --muted: #9aa3b2; --line: #2b313b;
+    --action: #6ea8ec; --action-ink: #0b1220;
+    --good: #5cc28d; --good-bg: #13291e; --bad: #f08a80; --bad-bg: #2d1715; --warn: #e8bd55; --warn-bg: #2a2310;
+    --tg-bg: #0e1621; --tg-in: #182533; --tg-out: #2b5278;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1216; --surface: #171b21; --sunken: #1e232b; --ink: #e8eaee; --muted: #9aa3b2; --line: #2b313b;
+  --action: #6ea8ec; --action-ink: #0b1220;
+  --good: #5cc28d; --good-bg: #13291e; --bad: #f08a80; --bad-bg: #2d1715; --warn: #e8bd55; --warn-bg: #2a2310;
+  --tg-bg: #0e1621; --tg-in: #182533; --tg-out: #2b5278;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-body); }
+a { color: var(--action); }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--action); outline-offset: 2px; }
+
+.wrap { max-width: 1280px; margin: 0 auto; padding: 20px 20px 48px; display: grid; gap: 20px; }
+
+header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.plate { display: inline-flex; align-items: stretch; border-radius: 5px; overflow: hidden; border: 1.5px solid var(--accent-ink); font: 700 15px/1 var(--font-display); letter-spacing: .04em; }
+.plate .eu { background: #003399; color: #ffcc00; font-size: 9px; padding: 4px 4px; display: grid; place-items: end center; }
+.plate .num { background: var(--accent); color: var(--accent-ink); padding: 6px 10px; }
+h1 { font: 800 26px/1.1 var(--font-display); margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+.sub { color: var(--muted); margin: 4px 0 0; max-width: 70ch; }
+.demo-note { font-size: 13px; color: var(--warn); background: var(--warn-bg); border-radius: 999px; padding: 5px 12px; }
+
+.grid { display: grid; grid-template-columns: minmax(320px, 400px) 1fr; gap: 20px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.panel-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.panel-h h2 { font: 700 15px/1.2 var(--font-display); margin: 0; letter-spacing: .01em; }
+.panel-b { padding: 16px; }
+
+/* ---------- input ---------- */
+.samples { display: grid; gap: 8px; }
+.sample { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: center; text-align: left; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); cursor: pointer; }
+.sample:hover { border-color: var(--action); }
+.sample[aria-pressed="true"] { border-color: var(--action); box-shadow: inset 3px 0 0 var(--action); background: var(--sunken); }
+.sample .kind { grid-row: span 2; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); width: 54px; }
+.sample .t { font-weight: 600; }
+.sample .s { font-size: 13px; color: var(--muted); }
+
+.controls { display: grid; gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--line); }
+.ctrl { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; font-size: 14px; }
+.ctrl output { font: 500 13px var(--font-mono); font-variant-numeric: tabular-nums; }
+.ctrl input[type="range"] { grid-column: 1 / -1; width: 100%; accent-color: var(--action); }
+.toggle { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.toggle input { accent-color: var(--action); width: 16px; height: 16px; }
+.run { margin-top: 4px; width: 100%; padding: 11px 14px; border: 0; border-radius: 8px; background: var(--action); color: var(--action-ink); font-weight: 600; cursor: pointer; }
+.run:disabled { opacity: .6; cursor: progress; }
+
+/* ---------- telegram ---------- */
+.tg { background: var(--tg-bg); border-radius: 0 0 var(--radius) var(--radius); padding: 14px 12px; display: grid; gap: 10px; min-height: 420px; align-content: start; }
+.tg-head { display: flex; align-items: center; gap: 10px; }
+.avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font: 800 13px var(--font-display); }
+.tg-head small { display: block; color: var(--muted); font-size: 12px; line-height: 1.2; }
+.bubble { max-width: 92%; padding: 8px 11px; border-radius: 12px; font-size: 14px; line-height: 1.45; box-shadow: 0 1px 1px rgba(0,0,0,.08); overflow-wrap: anywhere; }
+.bubble.out { justify-self: end; background: var(--tg-out); border-bottom-right-radius: 4px; }
+.bubble.in { justify-self: start; background: var(--tg-in); border-bottom-left-radius: 4px; }
+.adlink { color: var(--action); }
+.bubble .meta { display: block; text-align: right; font-size: 11px; color: var(--muted); margin-top: 2px; }
+.photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin: -2px -5px 6px; }
+.photos svg { width: 100%; height: auto; border-radius: 6px; display: block; }
+.reply p { margin: 0 0 6px; }
+.reply p:last-child { margin-bottom: 0; }
+.reply ol { margin: 0 0 6px; padding-left: 18px; }
+.reply li { margin-bottom: 4px; }
+.reply .num { font-variant-numeric: tabular-nums; }
+.typing { display: inline-flex; gap: 4px; }
+.typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: blink 1s infinite; }
+.typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
+@keyframes blink { 0%, 80%, 100% { opacity: .25 } 40% { opacity: 1 } }
+
+/* ---------- pipeline ---------- */
+.stages { display: grid; gap: 14px; }
+.stage { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.stage-h { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.step { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font: 700 13px var(--font-display); background: var(--sunken); color: var(--muted); border: 1px solid var(--line); }
+.stage[data-state="done"] .step { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.stage[data-state="running"] .step { background: var(--action); color: var(--action-ink); border-color: transparent; animation: pulse 1s infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--action) 25%, transparent); } }
+.stage-h h3 { margin: 0; font: 700 15px/1.2 var(--font-display); }
+.stage-h p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.tech { font: 500 11px var(--font-mono); color: var(--muted); background: var(--sunken); padding: 3px 7px; border-radius: 5px; white-space: nowrap; }
+.stage-b { padding: 14px 16px; }
+.stage[data-state="running"] .stage-b, .stage[data-state="idle"] .stage-b { opacity: .45; }
+
+.spec { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.kv { background: var(--sunken); border-radius: 7px; padding: 7px 10px; min-width: 0; }
+.kv span { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.kv b { font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chip { font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); }
+.chip.pkg { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--surface)); }
+.conf { margin-top: 10px; font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.bar { flex: 0 0 120px; height: 6px; background: var(--sunken); border-radius: 3px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--good); }
+
+.sites { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+@media (max-width: 640px) { .sites { grid-template-columns: 1fr; } }
+.site { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; gap: 6px; min-width: 0; }
+.site-name { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-weight: 600; }
+.site-name span { font: 500 12px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.url { font: 400 11.5px/1.4 var(--font-mono); color: var(--muted); background: var(--sunken); border-radius: 5px; padding: 6px 8px; overflow-wrap: anywhere; max-height: 74px; overflow: auto; }
+.via { font-size: 12px; color: var(--muted); }
+
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.n { font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+th.n { text-align: right; }
+tr.rej td { color: var(--muted); }
+tr.rej td.t { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent); }
+.pill { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.ok { color: var(--good); background: var(--good-bg); }
+.pill.no { color: var(--bad); background: var(--bad-bg); }
+.pill.dup { color: var(--warn); background: var(--warn-bg); }
+.why { font-size: 12px; color: var(--muted); }
+.sitetag { font: 500 11px var(--font-mono); color: var(--muted); }
+.filter-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 4px 10px; cursor: pointer; font-size: 13px; }
+.seg button[aria-pressed="true"] { background: var(--sunken); font-weight: 600; color: var(--ink); }
+
+.result { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+@media (max-width: 640px) { .result { grid-template-columns: repeat(2, 1fr); } }
+.tile { background: var(--sunken); border-radius: 8px; padding: 10px 12px; }
+.tile span { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.tile b { font: 700 22px/1.2 var(--font-display); font-variant-numeric: tabular-nums; }
+.tile.main { background: var(--accent); color: var(--accent-ink); }
+.tile.main span { color: inherit; opacity: .75; }
+.verdict { margin: 12px 0 4px; font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.chart { margin-top: 10px; }
+.chart svg { width: 100%; height: auto; display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+
+/* ---------- architecture ---------- */
+.arch { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; counter-reset: a; }
+.node { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--surface); position: relative; }
+.node b { display: block; font: 700 14px var(--font-display); margin-bottom: 2px; }
+.node span { font-size: 13px; color: var(--muted); }
+.node code { font: 500 11px var(--font-mono); color: var(--muted); display: block; margin-top: 6px; }
+.make { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; }
+.make .m { border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; background: var(--sunken); }
+.make .arrow { color: var(--muted); }
+footer { color: var(--muted); font-size: 13px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="brand">
+        <span class="plate" aria-hidden="true"><span class="eu">NL</span><span class="num">AV-01</span></span>
+        <h1>AutoValue: AI car market valuation</h1>
+      </div>
+      <p class="sub">Send an ad link or photos and get back the market price of exactly that car, plus the 3 cheapest comparable cars on AutoScout24, Marktplaats and Gaspedaal.</p>
+    </div>
+    <span class="demo-note">Demo: AI extraction and scraping are simulated with sample listings</span>
+  </header>
+
+  <div class="grid">
+    <!-- LEFT: input + chat -->
+    <div style="display:grid; gap:20px;">
+      <section class="panel" aria-labelledby="in-h">
+        <div class="panel-h"><h2 id="in-h">Send an ad</h2></div>
+        <div class="panel-b">
+          <div class="samples" id="samples" role="group" aria-label="Sample ads"></div>
+          <div class="controls">
+            <div class="ctrl"><label for="yearTol">Year tolerance</label><output id="yearTolOut">±1</output>
+              <input type="range" id="yearTol" min="0" max="3" step="1" value="1"></div>
+            <div class="ctrl"><label for="kmTol">Mileage tolerance</label><output id="kmTolOut">±35%</output>
+              <input type="range" id="kmTol" min="10" max="80" step="5" value="35"></div>
+            <label class="toggle" for="strict"><input type="checkbox" id="strict" checked> Exact trim only (relaxed automatically if fewer than 3)</label>
+            <button class="run" id="run" type="button">Send to bot and valuate</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="tg-h">
+        <div class="panel-h">
+          <div class="tg-head"><span class="avatar">AV</span><div><h2 id="tg-h">AutoValue Bot</h2><small>Telegram</small></div></div>
+        </div>
+        <div class="tg" id="chat" aria-live="polite"></div>
+      </section>
+    </div>
+
+    <!-- RIGHT: pipeline -->
+    <div class="stages">
+      <section class="stage" id="st1" data-state="done">
+        <div class="stage-h"><span class="step">1</span><div><h3>AI extraction</h3><p>GPT-4o Vision reads the page, photos and text and returns a validated spec</p></div><span class="tech">extractor.py</span></div>
+        <div class="stage-b" id="specOut"></div>
+      </section>
+
+      <section class="stage" id="st2" data-state="done">
+        <div class="stage-h"><span class="step">2</span><div><h3>Search 3 sites in parallel</h3><p>Dynamic search URLs built from the spec; blocked requests escalate to a scraping API</p></div><span class="tech">sites/*.py · fetcher.py</span></div>
+        <div class="stage-b"><div class="sites" id="sitesOut"></div></div>
+      </section>
+
+      <section class="stage" id="st3" data-state="done">
+        <div class="stage-h"><span class="step">3</span><div><h3>Match exact specs</h3><p>Hard filters, trim and option scoring, cross-site duplicate removal</p></div><span class="tech">matcher.py</span></div>
+        <div class="stage-b">
+          <div class="filter-row">
+            <span id="matchSummary"></span>
+            <span class="seg" role="group" aria-label="Show listings">
+              <button type="button" data-f="all" aria-pressed="true">All</button>
+              <button type="button" data-f="kept" aria-pressed="false">Kept</button>
+              <button type="button" data-f="rej" aria-pressed="false">Rejected</button>
+            </span>
+          </div>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>Listing</th><th class="n">Price</th><th class="n">Year</th><th class="n">Km</th><th>Result</th></tr></thead>
+            <tbody id="tblOut"></tbody>
+          </table></div>
+        </div>
+      </section>
+
+      <section class="stage" id="st4" data-state="done">
+        <div class="stage-h"><span class="step">4</span><div><h3>Valuation</h3><p>Average and median after IQR outlier removal, compared with the asking price</p></div><span class="tech">matcher.price_stats</span></div>
+        <div class="stage-b" id="valOut"></div>
+      </section>
+    </div>
+  </div>
+
+  <section class="panel" aria-labelledby="arch-h">
+    <div class="panel-h"><h2 id="arch-h">How it's built</h2><span class="tech">Python · FastAPI · OpenAI · ZenRows/ScrapingBee · Make.com</span></div>
+    <div class="panel-b">
+      <div class="arch">
+        <div class="node"><b>Input</b><span>Telegram bot, WhatsApp, Google Sheet or any Make.com trigger</span><code>bot.py · POST /valuate</code></div>
+        <div class="node"><b>AI extraction</b><span>Make, model, variant, trim, year, km, fuel, gearbox, kW, packages, options</span><code>GPT-4o vision, JSON mode</code></div>
+        <div class="node"><b>Scraping</b><span>AutoScout24 page data, the Marktplaats search endpoint, Gaspedaal embedded JSON</span><code>direct → ZenRows → ScrapingBee</code></div>
+        <div class="node"><b>Matching</b><span>Same trim and options, tolerance bands, dedupe across sites</span><code>strict trim, auto-relax &lt; 3</code></div>
+        <div class="node"><b>Output</b><span>Average, median, 3 cheapest with links, verdict on asking price</span><code>Telegram · text · Sheet row</code></div>
+      </div>
+      <div class="make" aria-label="Make.com scenario">
+        <strong style="margin-right:4px">Make.com scenario:</strong>
+        <span class="m">Telegram · Watch updates</span><span class="arrow">→</span>
+        <span class="m">HTTP · POST /valuate/upload</span><span class="arrow">→</span>
+        <span class="m">Router</span><span class="arrow">→</span>
+        <span class="m">Telegram · Reply</span><span class="arrow">+</span>
+        <span class="m">Google Sheets · Add row</span>
+      </div>
+    </div>
+  </section>
+
+  <footer>Listings, prices and the AI output on this page are sample data, so the matching and statistics can be shown without API keys. In the real system each step runs live. Search links open the actual search on each site.</footer>
+</div>
+
+<script>
+"use strict";
+/* ================= sample data ================= */
+// [site, title, price|null, year, km, fuel, gearbox, kW|null, description]
+const SAMPLES = [
+  {
+    id: "bmw", kind: "Link", title: "BMW 320i M Sport (2019)", sub: "marktplaats.nl/v/auto-s/bmw/m2212…",
+    input: { type: "url", text: "https://www.marktplaats.nl/v/auto-s/bmw/m2212487311-bmw-3-serie-320i-m-sport-high-exe" },
+    spec: { make: "BMW", model: "3 Serie", variant: "320i", trim: "M Sport", year: 2019, km: 70000, fuel: "petrol", gear: "automatic", kw: 135,
+            body: "Sedan", packages: ["M Sportpakket"], options: ["panoramadak", "head-up display"], asking: 24500, confidence: 0.92 },
+    listings: [
+      ["autoscout24","BMW 320i M Sport High Executive",27950,2019,62000,"petrol","automatic",135,"Panoramadak, Head-up display, M Sportpakket"],
+      ["autoscout24","BMW 320i M Sport Business Edition",25900,2019,81000,"petrol","automatic",135,"Navigatie, LED"],
+      ["autoscout24","BMW 320i Executive Edition",23450,2018,95000,"petrol","automatic",135,"Sportstoelen"],
+      ["autoscout24","BMW 320i M Sport Shadow Edition",31900,2020,40000,"petrol","automatic",135,"Panorama, HUD, Harman Kardon"],
+      ["autoscout24","BMW 320i M Sport",9999,2019,70000,"petrol","automatic",135,"Schadeauto, export"],
+      ["autoscout24","BMW 320d M Sport",26500,2019,70000,"diesel","automatic",140,""],
+      ["marktplaats","BMW 3-serie 320i M Sport | Pano | Trekhaak",26750,2019,68000,"petrol","automatic",null,"Head-up display, leder"],
+      ["marktplaats","BMW 3 Serie 320i High Executive M-Sport",24950,2019,88000,"petrol","automatic",null,"Dealer onderhouden"],
+      ["marktplaats","BMW 320i M Sport Edition",null,2020,59000,"petrol","automatic",null,"Bieden"],
+      ["marktplaats","BMW 320i M Sport High Executive",27950,2019,62000,"petrol","automatic",null,"Panoramadak"],
+      ["marktplaats","BMW 320i",15000,2015,230000,"petrol","automatic",null,"Veel km"],
+      ["marktplaats","BMW 330e M Sport",28900,2019,60000,"plugin_hybrid","automatic",null,""],
+      ["gaspedaal","BMW 3-serie 320i M Sport",26250,2019,74000,"petrol","automatic",null,""],
+      ["gaspedaal","BMW 3-serie 320i M Sport Shadow",29400,2020,51000,"petrol","automatic",null,"Panoramadak"],
+      ["gaspedaal","BMW 3-serie 318i",19950,2019,99000,"petrol","manual",null,""],
+      ["gaspedaal","BMW 3-serie 320i M Sport",28750,2018,66000,"petrol","automatic",null,"Head-up, adaptive cruise"],
+      ["gaspedaal","BMW X3 xDrive20i M Sport",36900,2019,70000,"petrol","automatic",null,""],
+    ],
+  },
+  {
+    id: "golf", kind: "Photos", title: "VW Golf 1.5 eTSI R-Line (2021)", sub: "3 photos + ad text",
+    input: { type: "photos", text: "Golf 8 R-Line DSG, 45.000 km, 1e eigenaar, ACC, virtual cockpit, trekhaak. Vraagprijs € 28.900" },
+    spec: { make: "Volkswagen", model: "Golf", variant: "1.5 eTSI", trim: "R-Line", year: 2021, km: 45000, fuel: "petrol", gear: "automatic", kw: 110,
+            body: "Hatchback", packages: [], options: ["virtual cockpit", "adaptieve cruise control", "trekhaak"], asking: 28900, confidence: 0.84 },
+    listings: [
+      ["autoscout24","Volkswagen Golf 1.5 eTSI R-Line Business+",26450,2021,52000,"petrol","automatic",110,"IQ.Light, ACC, trekhaak"],
+      ["autoscout24","Volkswagen Golf 1.5 eTSI R-Line",27250,2021,38000,"petrol","automatic",110,"Panoramadak, virtual cockpit"],
+      ["autoscout24","Volkswagen Golf 1.5 TSI Life",21900,2021,47000,"petrol","manual",96,""],
+      ["autoscout24","Volkswagen Golf 2.0 TDI R-Line",25900,2021,60000,"diesel","automatic",110,""],
+      ["autoscout24","Volkswagen Golf 1.5 eTSI R-Line",25750,2022,41000,"petrol","automatic",110,"Virtual cockpit"],
+      ["marktplaats","VW Golf 8 1.5 eTSI R-Line DSG",25950,2021,49000,"petrol","automatic",null,"ACC, Head-up, trekhaak"],
+      ["marktplaats","Volkswagen Golf 1.5 eTSI Style",24950,2021,44000,"petrol","automatic",null,"Leder"],
+      ["marktplaats","VW Golf 1.5 eTSI R-Line",null,2021,50000,"petrol","automatic",null,"Bieden"],
+      ["marktplaats","Volkswagen Golf 1.0 eTSI Life",19900,2021,50000,"petrol","automatic",81,""],
+      ["marktplaats","VW Golf 2.0 TSI GTI",34900,2021,30000,"petrol","automatic",180,""],
+      ["gaspedaal","Volkswagen Golf 1.5 eTSI R-Line Business",26900,2020,58000,"petrol","automatic",null,"Navigatie, ACC"],
+      ["gaspedaal","Volkswagen Golf 1.5 eTSI R-Line",25950,2021,49000,"petrol","automatic",null,""],
+      ["gaspedaal","Volkswagen Golf 1.5 eTSI R-Line",26750,2021,70000,"petrol","automatic",null,""],
+      ["gaspedaal","Volkswagen Polo 1.0 TSI R-Line",21500,2021,40000,"petrol","automatic",null,""],
+      ["gaspedaal","Volkswagen Golf 1.5 eTSI R-Line Edition",28400,2022,30000,"petrol","automatic",null,"Panoramadak, IQ.Light"],
+    ],
+  },
+  {
+    id: "corolla", kind: "Link", title: "Toyota Corolla 1.8 Hybrid Business (2020)", sub: "autoscout24.nl/aanbod/toyota-corolla…",
+    input: { type: "url", text: "https://www.autoscout24.nl/aanbod/toyota-corolla-touring-sports-1-8-hybrid-business-hybride" },
+    spec: { make: "Toyota", model: "Corolla", variant: "1.8 Hybrid", trim: "Business", year: 2020, km: 60000, fuel: "hybrid", gear: "automatic", kw: 90,
+            body: "Touring Sports (estate)", packages: [], options: ["navigatie", "achteruitrijcamera", "adaptieve cruise control"], asking: 21950, confidence: 0.95 },
+    listings: [
+      ["autoscout24","Toyota Corolla Touring Sports 1.8 Hybrid Business",21450,2020,64000,"hybrid","automatic",90,"Navigatie, camera, ACC"],
+      ["autoscout24","Toyota Corolla 1.8 Hybrid Business Plus",22750,2020,52000,"hybrid","automatic",90,"Navi, LED"],
+      ["autoscout24","Toyota Corolla 2.0 Hybrid Executive",26900,2020,50000,"hybrid","automatic",135,""],
+      ["autoscout24","Toyota Corolla 1.8 Hybrid Active",19950,2020,70000,"hybrid","automatic",90,""],
+      ["autoscout24","Toyota Corolla Touring Sports 1.8 Hybrid Business",20950,2019,82000,"hybrid","automatic",90,"Navigatie"],
+      ["marktplaats","Toyota Corolla TS 1.8 Hybrid Business | Navi | Camera",21950,2020,59000,"hybrid","automatic",null,""],
+      ["marktplaats","Toyota Corolla 1.8 Hybrid Business",12500,2020,61000,"hybrid","automatic",null,"Ex-taxi, motor defect"],
+      ["marktplaats","Toyota Corolla 1.2 Turbo Business",17900,2020,55000,"petrol","manual",null,""],
+      ["marktplaats","Toyota Corolla 1.8 Hybrid Business",null,2020,60000,"hybrid","automatic",null,"Prijs op aanvraag"],
+      ["marktplaats","Toyota Corolla 1.8 Hybrid Business",23400,2021,41000,"hybrid","automatic",null,"ACC, stoelverwarming"],
+      ["gaspedaal","Toyota Corolla Touring Sports 1.8 Hybrid Business",21450,2020,64000,"hybrid","automatic",null,""],
+      ["gaspedaal","Toyota C-HR 1.8 Hybrid Business",22900,2020,60000,"hybrid","automatic",null,""],
+      ["gaspedaal","Toyota Corolla 1.8 Hybrid Business",22250,2020,58000,"hybrid","automatic",null,"Navigatie"],
+      ["gaspedaal","Toyota Corolla 1.8 Hybrid Business",20500,2017,110000,"hybrid","automatic",null,""],
+    ],
+  },
+];
+const SITE_LABEL = { autoscout24: "AutoScout24", marktplaats: "Marktplaats", gaspedaal: "Gaspedaal" };
+const SITE_VIA = { autoscout24: "Page data · ZenRows (Akamai)", marktplaats: "/lrp/api/search JSON · direct", gaspedaal: "Embedded JSON · direct" };
+
+/* ================= formatting ================= */
+const eur = v => v == null ? "–" : "€ " + v.toLocaleString("nl-NL");
+const km = v => v == null ? "–" : v.toLocaleString("nl-NL") + " km";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const FUEL_NL = { petrol: "Petrol", diesel: "Diesel", hybrid: "Hybrid", plugin_hybrid: "Plug-in hybrid", electric: "Electric" };
+
+/* ================= search URL builders (mirror app/sites/*.py) ================= */
+const slug = s => s.normalize("NFKD").replace(/[^\x00-\x7f]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
+function kmRange(spec, pct) {
+  const lo = Math.max(0, Math.floor(spec.km * (1 - pct / 100) / 5000) * 5000);
+  const hi = (Math.floor(spec.km * (1 + pct / 100) / 5000) + 1) * 5000;
+  return [lo, hi];
+}
+function searchUrl(site, spec, yt, pct) {
+  const [k0, k1] = kmRange(spec, pct);
+  const y0 = spec.year - yt, y1 = spec.year + yt;
+  if (site === "autoscout24") {
+    const fuel = { petrol: "B", diesel: "D", electric: "E", hybrid: "2", plugin_hybrid: "2" }[spec.fuel];
+    const p = new URLSearchParams({ atype: "C", cy: "NL", ustate: "N,U", sort: "price", desc: "0", size: "20",
+      fregfrom: y0, fregto: y1, kmfrom: k0, kmto: k1, fuel, gear: spec.gear === "automatic" ? "A" : "M" });
+    return `https://www.autoscout24.nl/lst/${slug(spec.make)}/${slug(spec.model)}?${p}`;
+  }
+  if (site === "marktplaats") {
+    const fuel = { petrol: "Benzine", diesel: "Diesel", electric: "Elektrisch", hybrid: "Hybride Elektrisch/Benzine", plugin_hybrid: "Hybride Elektrisch/Benzine" }[spec.fuel];
+    const p = new URLSearchParams([["l1CategoryId", "91"], ["limit", "100"], ["sortBy", "PRICE"], ["sortOrder", "INCREASING"],
+      ["attributeRanges[]", `constructionYear:${y0}:${y1}`], ["attributeRanges[]", `mileage:${k0}:${k1}`],
+      ["attributesByKey[]", `fuel:${fuel}`], ["attributesByKey[]", `transmission:${spec.gear === "automatic" ? "Automaat" : "Handgeschakeld"}`],
+      ["query", `${spec.make} ${spec.model} ${spec.variant}`]]);
+    return `https://www.marktplaats.nl/lrp/api/search?${p}`;
+  }
+  const p = new URLSearchParams({ srt: "pr-a", bmin: y0, bmax: y1, kmin: k0, kmax: k1 });
+  return `https://www.gaspedaal.nl/${slug(spec.make)}/${slug(spec.model)}?${p}`;
+}
+// What a human clicks: the normal search page (Marktplaats' API URL isn't a page).
+function browseUrl(site, spec, yt, pct) {
+  if (site === "marktplaats") return `https://www.marktplaats.nl/q/${encodeURIComponent((spec.make + " " + spec.model + " " + spec.variant).toLowerCase())}/`;
+  return searchUrl(site, spec, yt, pct);
+}
+
+/* ================= matcher (mirror app/matcher.py) ================= */
+const MAKE_ALIASES = { volkswagen: ["volkswagen", "vw"], "mercedes-benz": ["mercedes-benz", "mercedes"], bmw: ["bmw"], toyota: ["toyota"] };
+const OPTION_SYN = {
+  panoramadak: ["panorama", "pano", "schuifdak"], trekhaak: ["trekhaak", "towbar"], "head-up display": ["head-up", "head up", "hud"],
+  leder: ["leder", "leather"], "adaptieve cruise control": ["adaptive cruise", "adaptieve cruise", "acc"],
+  "virtual cockpit": ["virtual cockpit", "digital cockpit"], achteruitrijcamera: ["camera", "achteruitrijcamera"], navigatie: ["navi", "navigatie"],
+};
+const norm = t => " " + t.toLowerCase().replace(/ë/g, "e").replace(/[^a-z0-9]+/g, " ").trim() + " ";
+function contains(h, needle) {
+  const n = norm(needle).trim();
+  if (!n) return false;
+  if (h.includes(` ${n} `)) return true;
+  const c = n.replace(/ /g, ""), toks = h.trim().split(" ");
+  for (let size = 1; size <= 3; size++)
+    for (let i = 0; i + size <= toks.length; i++) if (toks.slice(i, i + size).join("") === c) return true;
+  return false;
+}
+function optionHit(opt, text) {
+  const key = opt.toLowerCase();
+  for (const [canon, syns] of Object.entries(OPTION_SYN))
+    if (key.includes(canon) || syns.some(s => key.includes(s))) return [...syns, canon].some(s => contains(text, s));
+  return contains(text, opt);
+}
+function modelOk(spec, text) {
+  if (contains(text, spec.model)) return true;
+  const first = norm(spec.model).trim().split(" ")[0];
+  if (/^\d+$/.test(first) && new RegExp(` ${first}( serie| series|er|\\d\\d[a-z]{0,2}) `).test(text)) return true;
+  return contains(text, spec.variant);
+}
+
+function score(spec, l, cfg) {
+  if (!l.price || l.price < 500) return { reject: "No fixed price" };
+  const text = norm(`${l.title} ${l.desc}`);
+  const aliases = MAKE_ALIASES[slug(spec.make)] || [spec.make];
+  if (!aliases.some(a => contains(text, a)) || !modelOk(spec, text)) return { reject: "Different model" };
+  if (Math.abs(spec.year - l.year) > cfg.yt) return { reject: `Year ${l.year} outside ±${cfg.yt}` };
+  const hybridPair = new Set([l.fuel, spec.fuel]).has("hybrid") && new Set([l.fuel, spec.fuel]).has("plugin_hybrid");
+  if (l.fuel !== spec.fuel && !hybridPair)
+    return { reject: `${FUEL_NL[l.fuel] || l.fuel}, not ${(FUEL_NL[spec.fuel] || spec.fuel).toLowerCase()}` };
+  if (l.gear !== spec.gear) return { reject: `${l.gear === "manual" ? "Manual" : "Automatic"} gearbox` };
+  if (Math.abs(l.km - spec.km) > spec.km * cfg.pct / 100 + 5000) return { reject: `Mileage outside ±${cfg.pct}%` };
+  if (l.kw && spec.kw && Math.abs(l.kw - spec.kw) > spec.kw * 0.10) return { reject: `${l.kw} kW, not ${spec.kw} kW` };
+
+  const reasons = [];
+  let total = 0.4;
+  if (contains(text, spec.variant)) { total += 0.15; reasons.push(spec.variant); }
+  if (contains(text, spec.trim)) { total += 0.15; reasons.push(spec.trim); }
+  else if (cfg.strict) return { reject: `Trim is not ${spec.trim}` };
+  total += spec.year === l.year ? 0.1 : 0.05;
+  total += 0.1 * (1 - Math.min(1, Math.abs(l.km - spec.km) / Math.max(spec.km, 10000)));
+  const wanted = [...spec.packages, ...spec.options];
+  if (wanted.length) {
+    const hits = wanted.filter(o => optionHit(o, text));
+    total += 0.1 * hits.length / wanted.length;
+    if (hits.length) reasons.push(hits.join(", "));
+  } else total += 0.1;
+  total = Math.min(1, Math.round(total * 1000) / 1000);
+  if (total < 0.6) return { reject: "Match score too low" };
+  return { score: total, reasons };
+}
+
+function quartiles(a) { // Python statistics.quantiles(n=4), 'exclusive' method
+  const n = a.length, m = n + 1, out = [];
+  for (let i = 1; i <= 3; i++) {
+    let j = Math.floor(i * m / 4); const delta = i * m - j * 4;
+    j = Math.max(1, Math.min(n - 1, j));
+    out.push(a[j - 1] + (a[j] - a[j - 1]) * delta / 4);
+  }
+  return out;
+}
+
+function runPipeline(sample, cfg) {
+  const spec = sample.spec;
+  const rows = sample.listings.map(([site, title, price, year, kmv, fuel, gear, kw, desc], i) =>
+    ({ id: i, site, title, price, year, km: kmv, fuel, gear, kw, desc }));
+
+  const matchAll = c => rows.map(l => ({ l, r: score(spec, l, c) }));
+  let res = matchAll(cfg), relaxed = false;
+  if (cfg.strict && res.filter(x => !x.r.reject).length < 3) { res = matchAll({ ...cfg, strict: false }); relaxed = true; }
+
+  // dedupe (same price, year, km//500): keep the higher score
+  const seen = new Map();
+  for (const x of res) {
+    if (x.r.reject) continue;
+    const key = `${x.l.price}|${x.l.year}|${Math.floor(x.l.km / 500)}`;
+    const prev = seen.get(key);
+    if (!prev) seen.set(key, x);
+    else if (x.r.score > prev.r.score) { prev.r = { reject: `Same car as on ${SITE_LABEL[x.l.site]}`, dup: true }; seen.set(key, x); }
+    else x.r = { reject: `Same car as on ${SITE_LABEL[prev.l.site]}`, dup: true };
+  }
+
+  // IQR outliers
+  const kept = res.filter(x => !x.r.reject).sort((a, b) => a.l.price - b.l.price);
+  let final = kept, outliers = [];
+  if (kept.length >= 5) {
+    const [q1, , q3] = quartiles(kept.map(x => x.l.price)), iqr = q3 - q1, lo = q1 - 1.5 * iqr, hi = q3 + 1.5 * iqr;
+    final = kept.filter(x => x.l.price >= lo && x.l.price <= hi);
+    outliers = kept.filter(x => x.l.price < lo || x.l.price > hi);
+    outliers.forEach(x => { x.r = { reject: "Price outlier (IQR)", outlier: true }; });
+  }
+  const prices = final.map(x => x.l.price);
+  const median = prices.length ? (prices.length % 2 ? prices[(prices.length - 1) / 2] : Math.round((prices[prices.length / 2 - 1] + prices[prices.length / 2]) / 2)) : null;
+  const stats = {
+    count: prices.length,
+    average: prices.length ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length) : null,
+    median, low: prices[0] ?? null, high: prices[prices.length - 1] ?? null, outliers: outliers.length,
+  };
+  let verdict = null, vclass = "";
+  if (spec.asking && median) {
+    const d = Math.round((spec.asking - median) / median * 100);
+    if (d <= -8) { verdict = `${Math.abs(d)}% below market median, a potential deal`; vclass = "ok"; }
+    else if (d >= 8) { verdict = `${d}% above market median`; vclass = "no"; }
+    else { verdict = `In line with the market (${d > 0 ? "+" : ""}${d}%)`; vclass = "dup"; }
+  }
+  const sites = Object.keys(SITE_LABEL).map(s => ({
+    site: s, found: rows.filter(r => r.site === s).length, matched: final.filter(x => x.l.site === s).length,
+    url: searchUrl(s, spec, cfg.yt, cfg.pct), browse: browseUrl(s, spec, cfg.yt, cfg.pct),
+  }));
+  return { spec, res, final, stats, verdict, vclass, relaxed, sites, cheapest: final.slice(0, 3), cfg };
+}
+
+/* ================= rendering ================= */
+const $ = id => document.getElementById(id);
+let current = SAMPLES[0], last = null, filter = "all";
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function renderSamples() {
+  $("samples").innerHTML = SAMPLES.map(s => `
+    <button type="button" class="sample" data-id="${s.id}" aria-pressed="${s === current}">
+      <span class="kind">${s.kind}</span><span class="t">${esc(s.title)}</span><span class="s">${esc(s.sub)}</span>
+    </button>`).join("");
+}
+
+function carPhoto(i) {
+  const hues = [210, 200, 220];
+  return `<svg viewBox="0 0 120 80" role="img" aria-label="Ad photo ${i + 1}">
+    <rect width="120" height="80" fill="hsl(${hues[i]} 18% 72%)"/><rect y="56" width="120" height="24" fill="hsl(${hues[i]} 10% 52%)"/>
+    <path d="M18 54 q4-14 18-16 l10-10 h30 l14 10 q12 2 14 16 z" fill="hsl(${hues[i]} 35% 30%)"/>
+    <circle cx="36" cy="56" r="7" fill="#222"/><circle cx="86" cy="56" r="7" fill="#222"/>
+    <path d="M50 30 h24 l9 8 h-37 z" fill="hsl(${hues[i]} 30% 82%)"/></svg>`;
+}
+
+function userBubble(s) {
+  const time = new Date().toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+  const body = s.input.type === "photos"
+    ? `<div class="photos">${[0, 1, 2].map(carPhoto).join("")}</div>${esc(s.input.text)}`
+    : `<span class="adlink">${esc(s.input.text)}</span>`;
+  return `<div class="bubble out">${body}<span class="meta">${time} ✓✓</span></div>`;
+}
+
+function replyHtml(r) {
+  const s = r.spec;
+  const facts = [s.year, km(s.km), s.fuel, s.gear, `${s.kw} kW`].join(" · ");
+  let h = `<p>🚗 <b>${esc(`${s.make} ${s.model} ${s.variant} ${s.trim}`)}</b><br>${esc(facts)}`;
+  const extras = [...s.packages, ...s.options];
+  if (extras.length) h += `<br>🧩 ${esc(extras.join(", "))}`;
+  h += `</p>`;
+  if (!r.stats.count) return h + `<p>❌ No comparable cars found. Try a wider tolerance.</p>`;
+  h += `<p>📊 <b>Market price</b> (${r.stats.count} comparable cars)<br>
+        Average: <b class="num">${eur(r.stats.average)}</b> · Median: <span class="num">${eur(r.stats.median)}</span><br>
+        Range: <span class="num">${eur(r.stats.low)} – ${eur(r.stats.high)}</span>`;
+  if (r.relaxed) h += `<br><i>Too few exact '${esc(s.trim)}' matches, so other trims are included</i>`;
+  if (r.stats.outliers) h += `<br><i>${r.stats.outliers} outlier(s) excluded</i>`;
+  if (s.asking) h += `<br>Asking price in ad: <span class="num">${eur(s.asking)}</span>, ${esc(r.verdict.charAt(0).toLowerCase() + r.verdict.slice(1))}`;
+  h += `</p><p>💰 <b>3 cheapest comparables</b></p><ol>`;
+  for (const x of r.cheapest) {
+    const site = r.sites.find(z => z.site === x.l.site);
+    h += `<li><a href="${esc(site.browse)}" rel="noopener">${esc(x.l.title)}</a><br><span class="num">${eur(x.l.price)} · ${x.l.year} · ${km(x.l.km)} · ${x.l.site}</span></li>`;
+  }
+  h += `</ol><p>🔎 ${r.sites.map(z => `<a href="${esc(z.browse)}" rel="noopener">${z.site}</a> ${z.matched}/${z.found}`).join(" | ")}</p>`;
+  return h;
+}
+
+function renderSpec(r) {
+  const s = r.spec;
+  const kv = [["Make", s.make], ["Model", s.model], ["Variant", s.variant], ["Trim", s.trim], ["Year", s.year], ["Mileage", km(s.km)],
+              ["Fuel", FUEL_NL[s.fuel]], ["Gearbox", s.gear === "automatic" ? "Automatic" : "Manual"], ["Power", `${s.kw} kW`],
+              ["Body", s.body], ["Asking price", eur(s.asking)]];
+  $("specOut").innerHTML = `<div class="spec">${kv.map(([k, v]) => `<div class="kv"><span>${k}</span><b>${esc(v)}</b></div>`).join("")}</div>
+    <div class="chips">${s.packages.map(p => `<span class="chip pkg">${esc(p)}</span>`).join("")}${s.options.map(o => `<span class="chip">${esc(o)}</span>`).join("")}</div>
+    <div class="conf">Extraction confidence <span class="bar"><i style="width:${s.confidence * 100}%"></i></span> ${Math.round(s.confidence * 100)}%</div>`;
+}
+
+function renderSites(r) {
+  $("sitesOut").innerHTML = r.sites.map(z => `
+    <div class="site">
+      <div class="site-name">${SITE_LABEL[z.site]}<span>${z.matched} / ${z.found} kept</span></div>
+      <div class="url" title="Search URL generated from the spec">${esc(z.url)}</div>
+      <div class="via">${SITE_VIA[z.site]} · <a href="${esc(z.browse)}" rel="noopener">open search</a></div>
+    </div>`).join("");
+}
+
+function renderTable(r) {
+  const order = x => x.r.reject ? (x.r.dup ? 1 : x.r.outlier ? 2 : 3) : 0;
+  const rows = [...r.res].sort((a, b) => order(a) - order(b) || (a.l.price ?? 1e9) - (b.l.price ?? 1e9))
+    .filter(x => filter === "all" || (filter === "kept") === !x.r.reject);
+  const keptN = r.final.length, rejN = r.res.length - keptN;
+  $("matchSummary").textContent = `${r.res.length} listings found · ${keptN} kept · ${rejN} rejected`;
+  $("tblOut").innerHTML = rows.map(x => {
+    const ok = !x.r.reject;
+    const pill = ok ? `<span class="pill ok">Match ${Math.round(x.r.score * 100)}%</span>`
+      : `<span class="pill ${x.r.dup || x.r.outlier ? "dup" : "no"}">${esc(x.r.reject)}</span>`;
+    const why = ok && x.r.reasons.length ? `<div class="why">${esc(x.r.reasons.join(" · "))}</div>` : "";
+    return `<tr class="${ok ? "" : "rej"}">
+      <td><div class="t">${esc(x.l.title)}</div><span class="sitetag">${SITE_LABEL[x.l.site]}${x.l.desc ? " · " + esc(x.l.desc) : ""}</span></td>
+      <td class="n">${eur(x.l.price)}</td><td class="n">${x.l.year}</td><td class="n">${x.l.km.toLocaleString("nl-NL")}</td>
+      <td>${pill}${why}</td></tr>`;
+  }).join("") || `<tr><td colspan="5" class="why">No listings in this view.</td></tr>`;
+}
+
+function chart(r) {
+  const pts = r.res.filter(x => x.l.price && (!x.r.reject || x.r.outlier));
+  if (!pts.length) return "";
+  const vals = [...pts.map(x => x.l.price), r.spec.asking].filter(Boolean);
+  const step = 2000;
+  const min = Math.floor(Math.min(...vals) / step) * step, max = Math.ceil(Math.max(...vals) / step) * step;
+  const W = 640, H = 120, L = 14, R = 14, Y = 58;
+  const x = v => L + (v - min) / (max - min || 1) * (W - L - R);
+  let ticks = "";
+  const tickStep = (max - min) / step > 10 ? step * 2 : step;
+  for (let v = min; v <= max; v += tickStep)
+    ticks += `<line x1="${x(v)}" x2="${x(v)}" y1="20" y2="${Y + 16}" stroke="var(--line)"/>
+              <text x="${x(v)}" y="${H - 18}" text-anchor="middle" font-size="11" fill="var(--muted)" font-family="var(--font-mono)">${(v / 1000)}k</text>`;
+  const dots = pts.map((p, i) => {
+    const yy = Y + ((i % 3) - 1) * 9;
+    return p.r.outlier
+      ? `<circle cx="${x(p.l.price)}" cy="${yy}" r="5" fill="none" stroke="var(--muted)" stroke-width="1.5"><title>${esc(p.l.title)} · ${eur(p.l.price)} (outlier)</title></circle>`
+      : `<circle cx="${x(p.l.price)}" cy="${yy}" r="5.5" fill="var(--action)" fill-opacity=".85"><title>${esc(p.l.title)} · ${eur(p.l.price)}</title></circle>`;
+  }).join("");
+  const med = r.stats.median ? `<line x1="${x(r.stats.median)}" x2="${x(r.stats.median)}" y1="26" y2="${Y + 18}" stroke="var(--ink)" stroke-width="2"/>
+      <text x="${x(r.stats.median)}" y="18" text-anchor="middle" font-size="11.5" font-weight="600" fill="var(--ink)">median ${eur(r.stats.median)}</text>` : "";
+  const ask = r.spec.asking ? `<g><path d="M${x(r.spec.asking)} ${Y + 20} l-6 10 h12 z" fill="var(--accent)" stroke="var(--ink)" stroke-width="1"/>
+      </g>` : "";
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Price distribution of comparable cars">${ticks}${med}${dots}${ask}</svg>
+    <div class="legend"><span><i style="background:var(--action)"></i>Comparable car</span><span><i style="border:1.5px solid var(--muted)"></i>Outlier, excluded</span><span><i style="background:var(--accent); border-radius:0; clip-path:polygon(50% 0,100% 100%,0 100%)"></i>Asking price in ad</span></div></div>`;
+}
+
+function renderValuation(r) {
+  if (!r.stats.count) { $("valOut").innerHTML = `<p class="why">No comparable cars at these tolerances. Widen the mileage or year range.</p>`; return; }
+  $("valOut").innerHTML = `
+    <div class="result">
+      <div class="tile main"><span>Average</span><b>${eur(r.stats.average)}</b></div>
+      <div class="tile"><span>Median</span><b>${eur(r.stats.median)}</b></div>
+      <div class="tile"><span>Range</span><b style="font-size:16px">${eur(r.stats.low)} – ${eur(r.stats.high)}</b></div>
+      <div class="tile"><span>Comparables</span><b>${r.stats.count}</b></div>
+    </div>
+    ${r.verdict ? `<div class="verdict">Asking ${eur(r.spec.asking)} <span class="pill ${r.vclass}">${esc(r.verdict)}</span></div>` : ""}
+    ${r.relaxed ? `<div class="why">Fewer than 3 exact '${esc(r.spec.trim)}' matches, so the trim rule was relaxed.</div>` : ""}
+    ${chart(r)}`;
+}
+
+function config() { return { yt: +$("yearTol").value, pct: +$("kmTol").value, strict: $("strict").checked }; }
+
+function renderAll(r) { renderSpec(r); renderSites(r); renderTable(r); renderValuation(r); }
+
+function chatFinal(r) {
+  $("chat").innerHTML = userBubble(current) + `<div class="bubble in reply">${replyHtml(r)}<span class="meta">AutoValue Bot</span></div>`;
+}
+
+const wait = ms => new Promise(res => setTimeout(res, reduced ? 0 : ms));
+async function animateRun() {
+  const btn = $("run"); btn.disabled = true;
+  const r = runPipeline(current, config()); last = r;
+  const stages = ["st1", "st2", "st3", "st4"].map($);
+  stages.forEach(s => s.dataset.state = "idle");
+  renderAll(r);
+  $("chat").innerHTML = userBubble(current) + `<div class="bubble in" id="status">🔍 Reading the ad and searching 3 sites… <span class="typing"><i></i><i></i><i></i></span></div>`;
+  const msgs = ["🤖 Extracting specs with GPT-4o…", "🌐 Searching AutoScout24, Marktplaats and Gaspedaal…", "🧮 Matching trims and options…", "📊 Calculating market price…"];
+  for (let i = 0; i < 4; i++) {
+    stages[i].dataset.state = "running";
+    const st = $("status"); if (st) st.firstChild.textContent = msgs[i] + " ";
+    await wait(i === 1 ? 1100 : 700);
+    stages[i].dataset.state = "done";
+  }
+  chatFinal(r);
+  btn.disabled = false;
+}
+
+function quickUpdate() { // tolerance changes re-run instantly
+  last = runPipeline(current, config());
+  renderAll(last); chatFinal(last);
+}
+
+/* ================= events ================= */
+$("samples").addEventListener("click", e => {
+  const b = e.target.closest(".sample"); if (!b) return;
+  current = SAMPLES.find(s => s.id === b.dataset.id); renderSamples(); animateRun();
+});
+$("run").addEventListener("click", animateRun);
+$("yearTol").addEventListener("input", e => { $("yearTolOut").textContent = "±" + e.target.value; quickUpdate(); });
+$("kmTol").addEventListener("input", e => { $("kmTolOut").textContent = "±" + e.target.value + "%"; quickUpdate(); });
+$("strict").addEventListener("change", quickUpdate);
+document.querySelector(".seg").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  filter = b.dataset.f;
+  document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  renderTable(last);
+});
+
+// Complete at rest: render the first sample immediately.
+renderSamples();
+quickUpdate();
+</script>
+</body>
+</html>
